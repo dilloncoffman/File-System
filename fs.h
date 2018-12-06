@@ -16,20 +16,21 @@
     #define MAX_FILE_NAME_LEN 19 // 15 characters for name and 4 for extensions (including ".")
 
     /* function prototypes */
-    char* getTime(); // gets the date and time to be used
     void createFile(char* filename); // creates a file with the name provided, allows the user to add content to that file, and adds an entry to the FAT
     void deleteFile(char* filename); // deletes a file with the name passed in, searches for the name in the FAT and sets all FAT columns for that entry to NULL (except the Name column which will get set to FREESPACE for future use)
+    int openFile(char* filename); // adds the file by filename to the open_file_array, returns 1 on success and 0 on failure
+    int closeFile(char* filename); // closes the file if it's open, returns 1 on success and 0 on failure
     void createDirectory(char* dirname); // creates a directory with the name provided and adds an entry to the FAT
     void deleteDirectory(char* dirname); // deletes a directory with the name passed in, searches for the name in the FAT and sets all FAT columns for that entry to NULL (except the Name column which will get set to FREESPACE for future use)
     void readFile(char* filename); // finds the file in the FAT, and thus in the physical directory and prints its contents to screen for the user
-    void writeToFile(char* filename); // allow the user to write to a file already created
+    void writeToFile(char* filename); // copies a file from your host OS to your file system
     void printDirHierarchy(); // prints the current directory hierarchy
+    void printDirContent(); // prints the current directories contents
+    char** parseCommand(char* command, char** argv, int *argc);
 
-    int openFile(char* filename); // adds the file by filename to the open_file_array, returns 1 on success and 0 on failure
-    int closeFile(char* filename); // closes the file if it's open, returns 1 on success and 0 on failure
-
-
-
-
+    char* getTime(); // gets the date and time to be used
+    int findEmptyEntryFAT(); // used to get an empty index within the FAT in order to insert a new file or directory
+    int findEmptyBlock(); // used to get an empty index to store the contents of a file
+    void insertEntry(int emptyIndex, char* filename, char* fileOrDir, char* indexNumber, char* parent, char* timestamp); // inserts an entry into the FAT with thr proper fields, at the correct index
     
 #endif

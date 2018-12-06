@@ -1,14 +1,14 @@
 # Dillon Coffman, Section 1 - Operating Systems Project 4
 # CompLab Tutor: Chenglong Fu
 all:
-	gcc -o fs fs.c helpers.c
+	gcc -o fs fs.c
 
 test:
-	gcc -o testfs fs.c helpers.c -D TESTING
+	gcc -o testfs fs.c -D TESTING
 	./testfs
 
 test_part:
-	gcc -o testingpart fs.c helpers.c -D TESTING_PART
+	gcc -o testingpart fs.c -D TESTING_PART
 	./testingpart
 
 clean: 
