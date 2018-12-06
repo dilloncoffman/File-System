@@ -56,33 +56,94 @@ int main(int argc, char** argv) {
             }
             printf("User-specified virtual disk opened successfully!\n"); // FOR TESTING
 
-            // Extract characters from file and store in character c
-            char ch;
-            while(!feof(disk_ptr)) {
-                ch = fgetc(disk_ptr);
-                if (ch == '\n') {
-                    startingIndex++;
-                }
-            }
-            startingIndex -= 1; // since first line was technically the FAT column names
-            printf("Starting index = %d\n", startingIndex); // FOR TESTING
 
-            printf("%s | ", FAT[0][0]);
+
+
+/************************************************* START CURRENTLY WORKING ON **************************************************/
+
+            // Extract characters from file and store in character ch
+            // char ch;
+            // while(!feof(disk_ptr)) {
+            //     ch = fgetc(disk_ptr);
+            //     if (ch == '\n') {
+            //         startingIndex++;
+            //     }
+            // }
+            // startingIndex -= 1; // since first line was technically the FAT column names
+            // printf("Starting index = %d\n", startingIndex); // FOR TESTING
+
+            // printf("%s | ", FAT[0][0]);
+            // printf("%s | ", FAT[0][1]);
+            // printf("%s | ", FAT[0][2]);
+            // printf("%s | ", FAT[0][3]);
+            // printf("%s", FAT[0][4]);
+
+            rewind(disk_ptr); // rewind disk file pointer again to parse each line into appropriate spot within data structures
+            char currentDiskContent[1000];
+            startingIndex = -1; // to avoid parsing through first line of virtual disk which just had the column headers for the FAT
+            while(!feof(disk_ptr)) {
+				if(fgets(currentDiskContent, 1000, disk_ptr)) {
+					// if (currentDiskContent[strlen(currentDiskContent)-1] == '\n') { // remove trailing newline if there is one in command
+					// 	currentDiskContent[strlen(currentDiskContent)-1] = '\0'; // replace that newline character with null character
+					// }
+					// argv = parseFile(currentDiskContent); // parse line from file
+                    // int i = 0;
+					// for(i = 0; i < 100; i++) {
+                    //     printf("argv: %s\n", argv[i]);
+                    // }
+                    startingIndex++;
+                    printf("startingIndex inside read: %d\n", startingIndex);
+                    int j = 0;
+                    if(startingIndex >= 0) { // want to avoid parsing and using the part of the virtual disk that just contains the FAT column names
+
+                        // Parse currentDiskContent
+                        char *rest = NULL;
+                        char *token;
+                        for (token = strtok_r(currentDiskContent, "|\n\t\r\a", &rest); ((token != NULL) && (j < 5)); token = strtok_r(NULL, "|\n\t\r\a", &rest), j++) {   
+                            printf("token:%s\n", token);
+                            FAT[startingIndex][j] = token;
+                        }
+                    }
+
+                    printf("printf says %s\n", currentDiskContent);
+				}
+			}
+            printf("\nWINNER: %s | ", FAT[0][0]);
             printf("%s | ", FAT[0][1]);
             printf("%s | ", FAT[0][2]);
             printf("%s | ", FAT[0][3]);
-            printf("%s", FAT[0][4]);
+            printf("%s\n", FAT[0][4]);
 
-            // Set remainder of indices in FAT to "." to mark them as empty
-            int i, j = 0;
-            for (i = startingIndex; i < 100; i++) {
-                for (j = 0; j < 5; j++) {
-                    FAT[i][j] = "."; // set all entries to "." which means they're empty
-                    strcpy(physicalDir[i], "."); // set all physical directory spaces to "." which means its empty
-                    printf("%s ", FAT[i][j]);
-                }
-                printf(" | row = %d\n", i); // FOR TESTING
-            }
+            printf("\nWINNER #2: %s | ", FAT[1][0]);
+            printf("%s | ", FAT[1][1]);
+            printf("%s | ", FAT[1][2]);
+            printf("%s | ", FAT[1][3]);
+            printf("%s\n", FAT[1][4]);
+
+            printf("\nWINNER #3: %s | ", FAT[2][0]);
+            printf("%s | ", FAT[2][1]);
+            printf("%s | ", FAT[2][2]);
+            printf("%s | ", FAT[2][3]);
+            printf("%s\n", FAT[2][4]);
+
+
+
+
+/************************************************* END CURRENTLY WORKING ON **************************************************/
+
+
+
+
+            // // Set remainder of indices in FAT to "." to mark them as empty
+            // int i, j = 0;
+            // for (i = startingIndex; i < 100; i++) {
+            //     for (j = 0; j < 5; j++) {
+            //         FAT[i][j] = "."; // set all entries to "." which means they're empty
+            //         strcpy(physicalDir[i], "."); // set all physical directory spaces to "." which means its empty
+            //         printf("%s ", FAT[i][j]);
+            //     }
+            //     printf(" | row = %d\n", i); // FOR TESTING
+            // }
 
 
              // then read contents of file into data structures (file table, physical dir, and open_file_array (what files are open etc.))y
@@ -301,6 +362,22 @@ char** parseCommand(char* command, char** argv, int *argc) {
 	return argv; // return argv array to be executed on
 }
 
+/* Parse current disk content to read into appropriate data structures */
+char** parseFile(char* currentDiskContent) {       
+	int i = 0;
+    char** argv;
+    int *argc;
+	*(argc) = 0; // make sure for each command, argc is set back to 0
+    for (i = 0; i < 100; i++) {
+        argv[i] = strtok_r(currentDiskContent, " \t\r\a", &currentDiskContent); // seperate each string by space and store that string in the respective index of params C-String array, nice thing about strtok_r is that it removes empty spaces all together and all other delimiters
+		
+        if (argv[i] == NULL) break;
+		(*argc)++; // increment argc for every string in the command
+    }
+    argv[strlen(*argv) + 1] = NULL; // set first location in array after C-Strings to NULL
+	return argv; // return argv array to be executed on
+}
+
 
 
 
@@ -354,7 +431,6 @@ int findEmptyBlock() {
 
 /*
     Inserts an entry with the appropriate fields into the FAT at the first empty index
-
 */
 void insertEntry(int emptyIndex, char* name, char* fileOrDir, char* indexNumber, char* parent, char* timestamp) {
     // assign all values to appropriate spots
@@ -368,5 +444,5 @@ void insertEntry(int emptyIndex, char* name, char* fileOrDir, char* indexNumber,
     fprintf(disk_ptr, "%s | ", FAT[emptyIndex][1]);
     fprintf(disk_ptr, "%s | ", FAT[emptyIndex][2]);
     fprintf(disk_ptr, "%s | ", FAT[emptyIndex][3]);
-    fprintf(disk_ptr, "%s\n", FAT[emptyIndex][4]);
+    fprintf(disk_ptr, "%s", FAT[emptyIndex][4]);
 }

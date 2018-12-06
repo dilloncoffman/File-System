@@ -1,2 +1,3 @@
 File Name | FileOrDir | Index Number | Parent | Date and Time
-root | dir | 0 | none | Wed Dec  5 20:28:26 2018
+root| dir| 0| none| Wed Dec  5 22:28:39 2018
+notroot| file| 1| /| Wed Dec  5 23:28:39 2018

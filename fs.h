@@ -27,6 +27,7 @@
     void printDirHierarchy(); // prints the current directory hierarchy
     void printDirContent(); // prints the current directories contents
     char** parseCommand(char* command, char** argv, int *argc);
+    char** parseFile(char* currentDiskContent);
 
     char* getTime(); // gets the date and time to be used
     int findEmptyEntryFAT(); // used to get an empty index within the FAT in order to insert a new file or directory
