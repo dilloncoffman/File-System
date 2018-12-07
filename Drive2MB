@@ -1,3 +1,11 @@
 File Name | FileOrDir | Index Number | Parent | Date and Time
-root| dir| 0| none| Wed Dec  5 22:28:39 2018
-notroot| file| 1| /| Wed Dec  5 23:28:39 2018
+root | dir | 0 | none | Fri Dec  7 17:47:15 2018
+filename | file | 1 | / | Fri Dec  7 18:47:15 2018
+newdir | dir | 2 | / | Fri Dec  7 20:47:15 2018
+newfir | file | 3 | / | Fri Dec  7 17:53:10 2018
+new | file | 4 | / | Fri Dec  7 17:54:13 2018
+now | file | 4 | / | Fri Dec  7 17:54:18 2018
+now2 | file | 4 | / | Fri Dec  7 17:54:23 2018
+file.txt | file | 4 | / | Fri Dec  7 17:54:26 2018
+newone | file | 8 | / | Fri Dec  7 17:54:53 2018
+newfile.txt | file | 9 | / | Fri Dec  7 17:58:17 2018
