@@ -49,7 +49,17 @@ int main(int argc, char **argv)
             }
 
             fputs(fatCols, disk_ptr); // write FAT columns to virtual disk file's first line to be used
-            createFile("root");       // create root directory and thus inserting it into the FAT
+            createDirectory("root");       // create root directory and thus inserting it into the FAT
+            // Set remainder of indices in FAT to "." to mark them as empty
+            for (i = startingIndex; i < 100; i++) {
+                for (j = 0; j < 5; j++) {
+                    FAT[i][j] = "."; // set all entries to "." which means they're empty
+                    strcpy(physicalDir[i], "."); // set all physical directory spaces to "." which means its empty
+                    printf("%s ", FAT[i][j]);
+                }
+                printf(" | row = %d\n", i); // FOR TESTING
+            }
+
         }
         else
         {                                                             // virtual disk file is NOT empty AND exists within the project directory
@@ -170,16 +180,19 @@ int main(int argc, char **argv)
             { // user wants to create directory
                 // parse command to get filename wanting to be created
                 printf("User wants to create a directory..\n"); // FOR TESTING
+                createDirectory(argv[1]);
             }
             else if (strcmp(line, "delete") == 0)
             { // user wants to delete a file
                 // parse command to get filename wanting to be created
                 printf("User wants to delete a file..\n"); // FOR TESTING
+                deleteFile(argv[1]);
             }
             else if (strcmp(line, "deleteDir") == 0)
             { // user wants to delete a directory
                 // parse command to get filename wanting to be created
                 printf("User wants to delete a directory..\n"); // FOR TESTING
+                deleteDirectory(argv[1]);
             }
             else if (strcmp(line, "cat") == 0)
             { // user wants to print the contents of a file
@@ -224,14 +237,7 @@ int main(int argc, char **argv)
 */
 void createFile(char *filename)
 {
-    // ensure you're within a dir
-
-    if (strcmp(filename, "root") == 0)
-    {
-        insertEntry(0, filename, "dir", "0", "none", getTime());
-    }
-    else
-    {
+    // ensure at least the root directory exists
         // find empty entry in the FAT to create the new file at
         int emptyIndex = findEmptyEntryFAT();
         printf("Found an empty entry at row: %d\n", emptyIndex); // FOR TESTING
@@ -244,9 +250,12 @@ void createFile(char *filename)
         printf("Index number as a string: %s\n", indexNumber);
         // insert entry into FAT -
         insertEntry(emptyIndex, filename, "file", indexNumber, "/", getTime());
+    // } else { // otherwise root directory does not exist - print error message
+    //     printf("Was not able to create a directory as the root directory does not seem to exist..\n");
+    // }
+    
 
         // prompt user to enter file contents to store at empty physical dir index
-    }
 }
 
 /*
@@ -255,7 +264,45 @@ void createFile(char *filename)
 */
 void deleteFile(char *filename)
 {
-    // pseudocode in documentation
+    int i = 0;
+    int j = 0;
+    startingIndex = 0;
+    disk_ptr = fopen("Drive2MB", "r+"); // open for reading/writing to file
+    for (i = 0; i < 100; i++)
+    { // go through FAT, if filename column is "." then that entry is empty
+        printf("filename was: %s and length was: %lu\n", filename, strlen(filename));
+        printf("file/dir names: %s and length was: %lu\n", FAT[i][0], strlen(FAT[i][0]));
+        char* temp = strdup(FAT[i][0]); // makes handling the string name easier to manipulate
+        printf("TEMP IS: %s\n", temp);
+        temp[strlen(temp)-1] = 0; // remove newline from end of string to compare if it's the same as teh file name
+        startingIndex++; // increase the index which will be used to go to the line of the file entry in the FAT
+        if (strcmp(temp, filename) == 0)
+        {             // check if the current row's filename is ".", indicating an empty entry
+            // set all columns in that row to "." which means that row is not empty
+            printf("trying to delete one..\n");
+            printf("INDEX IS: %d", startingIndex);
+            rewind(disk_ptr); // rewind disk pointer to beginning of file
+            char newLine[2048];
+            while(startingIndex >= 0) { // while startingIndex is greater than OR equal to 0
+                fgets(newLine, sizeof(newLine), disk_ptr); // get each new line from the disk file
+                startingIndex--; // decrease the index
+            }
+            //fgets(newLine, sizeof(newLine), disk_ptr); // get the next line which will be the one we want
+
+            printf("newline is: %s\n", newLine); // FOR TESTING making sure get right line
+
+
+            
+            for (j = 0; j < 5; j++) {
+                printf("trying to delete..\n");
+                //FAT[i][j] = (char*)realloc(FAT[i][j], sizeof(char)*100); // clear a space in memory for assigning string into table
+                fprintf(disk_ptr, ". "); // update virtual disk file
+                strcpy(FAT[i][j], "."); // update data structure
+            }
+            break; // stop looping through FAT to find file
+            // update it's physical block allocation as well
+        }
+    }
 }
 
 /*
@@ -303,7 +350,7 @@ void createDirectory(char *dirname)
         sprintf(indexNumber, "%d", emptyBlock);
         printf("Index number as a string: %s\n", indexNumber);
         // insert entry into FAT -
-        insertEntry(emptyIndex, dirname, "file", indexNumber, "/", getTime());
+        insertEntry(emptyIndex, dirname, "dir", indexNumber, "/", getTime());
 
         // prompt user to enter file contents to store at empty physical dir index
     }
@@ -315,7 +362,21 @@ void createDirectory(char *dirname)
 */
 void deleteDirectory(char *dirname)
 {
-    // pseudocode in README
+    int i = 0;
+    int j = 0;
+    for (i = 0; i < 100; i++)
+    { // go through FAT, if filename column is "." then that entry is empty
+        dirname[strlen(dirname) - 1] = 0; // remove newline character from the end of that time string for printing purposes - note that NULL character is now at the end
+        if (strcmp(FAT[i][0], dirname) == 0)
+        {             // check if the current row's filename is ".", indicating an empty entry
+            // set all columns in that row to "." which means that row is not empty
+            for (j = 0; j < 5; j++) {
+                FAT[startingIndex][x] = (char*)realloc(FAT[startingIndex][x], sizeof(char)*100); // clear a space in memory for assigning string into table
+                strcpy(FAT[i][j], ".");
+            }
+            // update it's physical block allocation as well
+        }
+    }
 }
 
 /*
@@ -446,7 +507,7 @@ void insertEntry(int emptyIndex, char *name, char *fileOrDir, char *indexNumber,
     strcpy(FAT[emptyIndex][3], parent);
     strcpy(FAT[emptyIndex][4], timestamp);
 
-    printf("New file created: ");
+    printf("New file/dir created: ");
     printf("%s | ", FAT[emptyIndex][0]); 
     printf("%s | ", FAT[emptyIndex][1]);
     printf("%s | ", FAT[emptyIndex][2]);
@@ -454,9 +515,18 @@ void insertEntry(int emptyIndex, char *name, char *fileOrDir, char *indexNumber,
     printf("%s\n", FAT[emptyIndex][4]);
 
     // write that info to the virutal disk file where FAT is shown with separators for each entry
-    fprintf(disk_ptr, "\n%s | ", FAT[emptyIndex][0]);
-    fprintf(disk_ptr, "%s | ", FAT[emptyIndex][1]);
-    fprintf(disk_ptr, "%s | ", FAT[emptyIndex][2]);
-    fprintf(disk_ptr, "%s | ", FAT[emptyIndex][3]);
-    fprintf(disk_ptr, "%s", FAT[emptyIndex][4]);
+    if (startingIndex == 0) {
+        fprintf(disk_ptr, "%s | ", FAT[emptyIndex][0]);
+        fprintf(disk_ptr, "%s | ", FAT[emptyIndex][1]);
+        fprintf(disk_ptr, "%s | ", FAT[emptyIndex][2]);
+        fprintf(disk_ptr, "%s | ", FAT[emptyIndex][3]);
+        fprintf(disk_ptr, "%s", FAT[emptyIndex][4]);
+    } else {
+        fprintf(disk_ptr, "\n%s | ", FAT[emptyIndex][0]);
+        fprintf(disk_ptr, "%s | ", FAT[emptyIndex][1]);
+        fprintf(disk_ptr, "%s | ", FAT[emptyIndex][2]);
+        fprintf(disk_ptr, "%s | ", FAT[emptyIndex][3]);
+        fprintf(disk_ptr, "%s", FAT[emptyIndex][4]);
+    }
+    
 }
