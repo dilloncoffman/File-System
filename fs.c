@@ -8,13 +8,14 @@ char open_file_array[100][MAX_FILE_NAME_LEN];
 FILE *disk_ptr; // virtual disk file to be opened and accessed
 int startingIndex = 0; // global variable to keep track of number of filled indices in the FAT
 int x = 0; // global loop counter variable
+char** argv; // global argv to use in other functions other than main()
 
 int main(int argc, char **argv)
 {
     char line[100]; // line to use for user inputted commands
     char *fatCols = "File Name | FileOrDir | Index Number | Parent | Date and Time\n";
 
-    if (argc == 2)
+    if (argc >= 2 && argc < 4)
     { // only 2 args should be the file system executable and the disk wished to be used
         // Format disk - assign space for boot sector, root directory (the start of physical directory), and the FAT
         struct stat stat_record; // used to see if virtual disk is empty - see 'man stat' for more details
@@ -49,7 +50,7 @@ int main(int argc, char **argv)
             }
 
             fputs(fatCols, disk_ptr); // write FAT columns to virtual disk file's first line to be used
-            createDirectory("root");       // create root directory and thus inserting it into the FAT
+            createDirectory("/", "none");       // create root directory and thus inserting it into the FAT
             // Set remainder of indices in FAT to "." to mark them as empty
             for (i = startingIndex; i < 100; i++) {
                 for (j = 0; j < 5; j++) {
@@ -142,6 +143,7 @@ int main(int argc, char **argv)
 
         // Prompt user to manipulate file system with certain commands
         printf("Welcome to my file system! Please use one of the following commands below to manipulate it.\n");
+        printf("NOTE: You can create/delete files under a specific diretory by providing a third argument after the name of the file/dir you want to create like so: 'create newfile.txt dir'\n");
         printf("Create a file with: create 'filename' and include its extension\n");
         printf("Delete a file with: delete 'filename' and include its extension\n");
         printf("Create a directory with: createDir 'directoryname'\n");
@@ -174,13 +176,26 @@ int main(int argc, char **argv)
             { // if user wants to create file
                 // parse command to get filename wanting to be created
                 printf("User wants to create a file..\n"); // FOR TESTING
-                createFile(argv[1]);
+                if (argc == 3) { // user is specifying a parent for the file to be created
+                    createFile(argv[1], argv[2]);
+                } else if (argc == 2) { // argc is 2 which means a user is just specifying a new file to create without specifying a parent
+                    createFile(argv[1], "/");
+                } else { // something went wrong
+                    printf("An error occured creating your file..\n"); // print error message
+                }
+                
             }
             else if (strcmp(line, "createDir") == 0)
             { // user wants to create directory
                 // parse command to get filename wanting to be created
                 printf("User wants to create a directory..\n"); // FOR TESTING
-                createDirectory(argv[1]);
+                if (argc == 3) { // user is specifying a parent for the file to be created
+                    createDirectory(argv[1], argv[2]);
+                } else if (argc == 2) { // argc is 2 which means a user is just specifying a new file to create without specifying a parent
+                    createDirectory(argv[1], "/");
+                } else { // something went wrong
+                    printf("An error occured creating your directory..\n"); // print error message
+                }
             }
             else if (strcmp(line, "delete") == 0)
             { // user wants to delete a file
@@ -235,27 +250,47 @@ int main(int argc, char **argv)
     Creates a file with the name provided, allows the user to add content to that file, and adds an entry to the FAT
     Accepts a file name to search for within the FAT
 */
-void createFile(char *filename)
+void createFile(char *filename, char* parent)
 {
-    // ensure at least the root directory exists
-        // find empty entry in the FAT to create the new file at
+    // check that parent directory exists to store file under
+    if (strcmp("/", filename)) {
+            // find empty entry in the FAT to create the new file at
         int emptyIndex = findEmptyEntryFAT();
         printf("Found an empty entry at row: %d\n", emptyIndex); // FOR TESTING
         // find empty index in physical directory to store file contents in
         int emptyBlock = findEmptyBlock();
         printf("Found an empty block at index = %d\n", emptyBlock);
         // convert emptyBlock to a string and assign that to the appropriate column in the FAT entry when inserting entry
-        char *indexNumber;
+        char indexNumber[sizeof(int) * 4+1]; // make sure there's proper space for converting integer to string to be placed in FAT
         sprintf(indexNumber, "%d", emptyBlock);
         printf("Index number as a string: %s\n", indexNumber);
         // insert entry into FAT -
-        insertEntry(emptyIndex, filename, "file", indexNumber, "/", getTime());
-    // } else { // otherwise root directory does not exist - print error message
-    //     printf("Was not able to create a directory as the root directory does not seem to exist..\n");
-    // }
-    
+        insertEntry(emptyIndex, filename, "file", indexNumber, parent, getTime());
+        // } else { // otherwise root directory does not exist - print error message
+        //     printf("Was not able to create a directory as the root directory does not seem to exist..\n");
+        // }
+    }
+    if(findParent(parent)) {
+            // find empty entry in the FAT to create the new file at
+        int emptyIndex = findEmptyEntryFAT();
+        printf("Found an empty entry at row: %d\n", emptyIndex); // FOR TESTING
+        // find empty index in physical directory to store file contents in
+        int emptyBlock = findEmptyBlock();
+        printf("Found an empty block at index = %d\n", emptyBlock);
+        // convert emptyBlock to a string and assign that to the appropriate column in the FAT entry when inserting entry
+        char indexNumber[sizeof(int) * 4+1]; // make sure there's proper space for converting integer to string to be placed in FAT
+        sprintf(indexNumber, "%d", emptyBlock);
+        printf("Index number as a string: %s\n", indexNumber);
+        // insert entry into FAT -
+        insertEntry(emptyIndex, filename, "file", indexNumber, parent, getTime());
+        // } else { // otherwise root directory does not exist - print error message
+        //     printf("Was not able to create a directory as the root directory does not seem to exist..\n");
+        // }
 
         // prompt user to enter file contents to store at empty physical dir index
+    } else {
+        printf("Parent for file you wish to create was not found! Try again!\n");
+    }
 }
 
 /*
@@ -267,7 +302,7 @@ void deleteFile(char *filename)
     int i = 0;
     int j = 0;
     startingIndex = 0;
-    disk_ptr = fopen("Drive2MB", "r+"); // open for reading/writing to file
+    disk_ptr = fopen(argv[1], "r+"); // open for reading/writing to file
     for (i = 0; i < 100; i++)
     { // go through FAT, if filename column is "." then that entry is empty
         printf("filename was: %s and length was: %lu\n", filename, strlen(filename));
@@ -287,12 +322,8 @@ void deleteFile(char *filename)
                 fgets(newLine, sizeof(newLine), disk_ptr); // get each new line from the disk file
                 startingIndex--; // decrease the index
             }
-            //fgets(newLine, sizeof(newLine), disk_ptr); // get the next line which will be the one we want
-
             printf("newline is: %s\n", newLine); // FOR TESTING making sure get right line
 
-
-            
             for (j = 0; j < 5; j++) {
                 printf("trying to delete..\n");
                 //FAT[i][j] = (char*)realloc(FAT[i][j], sizeof(char)*100); // clear a space in memory for assigning string into table
@@ -329,11 +360,9 @@ int closeFile(char *filename)
     Creates a directory with the name provided and adds an entry to the FAT
     Accepts a directory name from the user to be used in the creation of that directory
 */
-void createDirectory(char *dirname)
+void createDirectory(char *dirname, char* parent)
 {
-     // ensure you're within a dir
-
-    if (strcmp(dirname, "root") == 0)
+    if (strcmp(dirname, "/") == 0) // if parent is root create the first entry
     {
         insertEntry(0, dirname, "dir", "0", "none", getTime());
     }
@@ -346,11 +375,11 @@ void createDirectory(char *dirname)
         int emptyBlock = findEmptyBlock();
         printf("Found an empty block at index = %d\n", emptyBlock);
         // convert emptyBlock to a string and assign that to the appropriate column in the FAT entry when inserting entry
-        char *indexNumber = (char*)malloc(sizeof(char)*20);
+        char indexNumber[sizeof(int)*4+1];
         sprintf(indexNumber, "%d", emptyBlock);
         printf("Index number as a string: %s\n", indexNumber);
         // insert entry into FAT -
-        insertEntry(emptyIndex, dirname, "dir", indexNumber, "/", getTime());
+        insertEntry(emptyIndex, dirname, "dir", indexNumber, parent, getTime());
 
         // prompt user to enter file contents to store at empty physical dir index
     }
@@ -488,6 +517,36 @@ int findEmptyBlock()
     return -1;                                           // return -1 to indicate failure
 }
 
+int findParent(char* parent) {
+    int i = 0;
+    int j = 0;
+    startingIndex = 0;
+    printf("Inside findParent()\n");
+    
+    for (i = 0; i < 100; i++)
+    { // go through FAT, if filename column is "." then that entry is empty
+        
+        char* temp = strdup(FAT[i][0]); // makes handling the string name easier to manipulate
+        char* tempType = strdup(FAT[i][1]); // makes handling the string name easier to manipulate
+        printf("TEMP IS: %s\n", temp);
+        printf("PARENT IS: %s\n", parent);
+        // parent[strlen(parent)] = '';
+        // temp[strlen(temp)-1] = 0; // remove newline from end of string to compare if it's the same as teh file name
+        // tempType[strlen(tempType) - 1] = 
+        printf("parent was: %s and length was: %lu\n", parent, strlen(parent));
+        printf("dirname was: %s and length was: %lu\n", temp, strlen(temp));
+        printf("dirType was: %s and length was: %lu\n", tempType, strlen(tempType));
+        startingIndex++; // increase the index which will be used to go to the line of the file entry in the FAT
+        if ((strcmp(temp, parent) == 0) && (strcmp(tempType, "dir") == 0))
+        {             // check if a directory with the name specified exists and also check it is actually a directory type
+            printf("Dir was found!\n");
+            return 1; // parent directory was found
+            break;
+        }
+    }
+    return 0; // parent wasn't found in FAT so return 0
+}
+
 /*
     Inserts an entry with the appropriate fields into the FAT at the first empty index
 */
@@ -521,6 +580,7 @@ void insertEntry(int emptyIndex, char *name, char *fileOrDir, char *indexNumber,
         fprintf(disk_ptr, "%s | ", FAT[emptyIndex][2]);
         fprintf(disk_ptr, "%s | ", FAT[emptyIndex][3]);
         fprintf(disk_ptr, "%s", FAT[emptyIndex][4]);
+        startingIndex++; // increment startingIndex
     } else {
         fprintf(disk_ptr, "\n%s | ", FAT[emptyIndex][0]);
         fprintf(disk_ptr, "%s | ", FAT[emptyIndex][1]);
