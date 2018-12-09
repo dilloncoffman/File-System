@@ -241,6 +241,7 @@ int main(int argc, char **argv)
                 #ifdef TESTING
                 printf("User wants to print the contents of a file..\n"); // FOR TESTING
                 #endif
+                printFileContents(argv[1]);
             }
             else if (strcmp(line, "printHierarchy") == 0)
             { // user wants to print current structure of files
@@ -257,6 +258,12 @@ int main(int argc, char **argv)
                 printf("User wants to print the contents of a directory..\n"); // FOR TESTING
                 #endif
                 printDirContent(argv[1]); // print the specified directory's content - the entries that have parent equal to the directory's name
+            } 
+            else if (strcmp(line, "cat") == 0){
+                #ifdef TESTING
+                printf("User wants to print the contents of a file..\n");
+                #endif
+                printFileContents(argv[1]);
             }
             else if (strcmp(line, "exit") == 0)
             {                                      // exit if user enters "exit"
@@ -517,6 +524,31 @@ void deleteDirectory(char *dirname)
 void readFile(char *filename)
 {
     // pseudocode in README
+}
+
+/*
+    Prints a specified file's contents to screen
+*/
+void printFileContents(char* filename) {
+    if(!filename) {
+        printf("No filename entered.. try again!\n");
+        return;
+    }
+    printf("%s contents below:\n", filename);
+    int i = 0;
+    for (i = 0; i < 100; i++)
+    { // go through FAT, if filename column is "." then that entry is empty
+        if (strcmp(FAT[i][0], filename) == 0)
+        {             // check if the current row's filename is ".", indicating an empty entry
+            // get file's index and print that index from physical directory
+            int indexToPrint = atoi(FAT[i][2]);
+            #ifdef TESTING
+            printf("Index to print: %d\n", indexToPrint); // FOR TESTING
+            #endif
+            printf("%s", physicalDir[indexToPrint]);
+        }
+    }
+    printf("\n");
 }
 
 /*

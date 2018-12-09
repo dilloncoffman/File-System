@@ -23,6 +23,7 @@
     void createDirectory(char* dirname, char* parent); // creates a directory with the name provided and adds an entry to the FAT
     void deleteDirectory(char* dirname); // deletes a directory with the name passed in, searches for the name in the FAT and sets all FAT columns for that entry to NULL (except the Name column which will get set to FREESPACE for future use)
     void readFile(char* filename); // finds the file in the FAT, and thus in the physical directory and prints its contents to screen for the user
+    void printFileContents(char* filename); // prints the contents of a specified file
     void writeToFile(char* filename); // copies a file from your host OS to your file system
     void printDirHierarchy(); // prints the current directory hierarchy
     void printDirContent(char* dirname); // prints the current directories contents
