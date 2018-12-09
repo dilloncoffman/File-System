@@ -9,6 +9,8 @@ FILE *disk_ptr;        // virtual disk file to be opened and accessed
 int startingIndex = 0; // global variable to keep track of number of filled indices in the FAT
 int x = 0;             // global loop counter variable
 char **argv;           // global argv to use in other functions other than main()
+int emptyIndex;
+int emptyBlock;
 
 int main(int argc, char **argv)
 {
@@ -83,17 +85,7 @@ int main(int argc, char **argv)
             #ifdef TESTING
             printf("User-specified virtual disk opened successfully!\n"); // FOR TESTING
             #endif
-            //rewind(disk_ptr);
-            // int i, j = 0;
-            // for (i = startingIndex; i < 100; i++) {
-            //     for (j = 0; j < 5; j++) {
-            //         FAT[i][j] = "."; // set all entries to "." which means they're empty
-            //         strcpy(physicalDir[i], "."); // set all physical directory spaces to "." which means its empty
-            //         printf("%s ", FAT[i][j]);
-            //     }
-            //     printf(" | row = %d\n", i); // FOR TESTING
-            // }
-            // fgets(line, 100, disk_ptr);
+
             char fileLine[2048];                         // fileLine to parse
             rewind(disk_ptr);                            // rewind to beginning to file since opening file with appending will put file pointer at end
             fgets(fileLine, sizeof(fileLine), disk_ptr); // using fgets here to avoid parsing the first line of the file which is just the FAT column names
@@ -167,6 +159,8 @@ int main(int argc, char **argv)
             printf("Print the current contents of a directory with: printDir 'directoryname'\n");
             printf("Print the directory hierarchy with: printHierarchy\n\n");
 
+            printf("Number of available blocks: %d\n\n", printNumberOfAvailableBlocks()); // print number of available blocks
+
             printf("myfs >> "); // prompt for user to enter
 
             if (fgets(line, sizeof(line), stdin) == NULL)
@@ -186,7 +180,7 @@ int main(int argc, char **argv)
             printf("argv3 = %s\n", argv[2]);
             printf("argc = %d\n", argc);
             #endif
-
+            fflush(stdin);
             if (strcmp(line, "create") == 0)
             { // if user wants to create file
                 // parse command to get filename wanting to be created
@@ -296,17 +290,22 @@ void createFile(char *filename, char *parent)
         return;
     }
 
-    // be sure that filename has an ending extension like ".txt"
+    
+
+    // be sure that filename has an ending extension like ".txt" or of some kind
     if((strstr(filename, ".txt")) || strstr(filename, ".")) { // as long as the filename has a text extension or some extension 
-        if (findParent(parent))
+        if (findParent(parent)) // ensure a parent for the created file exists in the FAT already
         {
             // find empty entry in the FAT to create the new file at
-            int emptyIndex = findEmptyEntryFAT();
+            emptyIndex = findEmptyEntryFAT();
             #ifdef TESTING
             printf("Found an empty entry at row: %d\n", emptyIndex); // FOR TESTING
             #endif
             // find empty index in physical directory to store file contents in
-            int emptyBlock = findEmptyBlock();
+            emptyBlock = findEmptyBlock();
+            // for(int i = 0; i < 100; i++) {
+            //     printf("PHYS DIR: %s and empty block found: %d\n", physicalDir[i], emptyBlock);
+            // }
             #ifdef TESTING
             printf("Found an empty block at index = %d\n", emptyBlock);
             #endif
@@ -318,11 +317,16 @@ void createFile(char *filename, char *parent)
             #endif
             // insert entry into FAT -
             insertEntry(emptyIndex, filename, "file", indexNumber, parent, getTime());
-            // } else { // otherwise root directory does not exist - print error message
-            //     printf("Was not able to create a directory as the root directory does not seem to exist..\n");
-            // }
+            startingIndex++;
 
             // prompt user to enter file contents to store at empty physical dir index
+            printf("Enter content for your newly created file: \n");
+            char *block = (char*)malloc(sizeof(char)*MAX_BLOCK_SIZE);
+            fgets(block, MAX_BLOCK_SIZE, stdin); // get string from user up to 512 bytes
+            strcpy(physicalDir[emptyBlock], block); // put that string into designated spot
+            #ifdef TESTING
+            printf("Physical block filled with: %s\n", physicalDir[emptyBlock]); // FOR TESTING
+            #endif
         }
         else
         {
@@ -397,7 +401,7 @@ void deleteFile(char *filename)
 */
 int openFile(char *filename)
 {
-    // pseudocode in documentation
+    // pseudocode in documentation - would add a filename to the open_file_array if I were able to figure out data persistence for the physical directory :/
     return 1;
 }
 
@@ -407,7 +411,7 @@ int openFile(char *filename)
 */
 int closeFile(char *filename)
 {
-    // pseudocode in documentation
+    // pseudocode in documentation - would remove a filename to the open_file_array if I were able to figure out data persistence for the physical directory :/
     return 1;
 }
 
@@ -420,6 +424,7 @@ void createDirectory(char *dirname, char *parent)
     if (strcmp(dirname, "/") == 0) // if parent is root create the first entry
     {
         insertEntry(0, dirname, "dir", "0", "none", getTime());
+        startingIndex++;
     }
     else
     {
@@ -455,7 +460,7 @@ void deleteDirectory(char *dirname)
     printf("Deleting %s directory from file system..\n\n", dirname);
     int i = 0;
     int j = 0;
-    startingIndex = 0;
+    int count = 0;
     disk_ptr = fopen("Drive2MB", "r+"); // open for reading/writing to file
     for (i = 0; i < 100; i++)
     { // go through FAT, if filename column is "." then that entry is empty
@@ -471,7 +476,7 @@ void deleteDirectory(char *dirname)
         printf("TEMP IS: %s\n", temp); // FOR TESTING
         #endif
         //temp[strlen(temp)-1] = 0; // remove newline from end of string to compare if it's the same as teh file name
-        startingIndex++; // increase the index which will be used to go to the line of the file entry in the FAT
+        count++; // increase the index which will be used to go to the line of the file entry in the FAT
         if (strcmp(temp, dirname) == 0)
         { // check if the current row's dirname is ".", indicating an empty entry
             // set all columns in that row to "." which means that row is not empty
@@ -481,10 +486,10 @@ void deleteDirectory(char *dirname)
             #endif
             rewind(disk_ptr); // rewind disk pointer to beginning of file
             char *newLine = (char *)malloc(sizeof(char) * 140);
-            while (startingIndex >= 0)
+            while (count >= 0)
             {                                              // while startingIndex is greater than OR equal to 0
                 fgets(newLine, sizeof(newLine), disk_ptr); // get each new line from the disk file
-                startingIndex--;                           // decrease the index
+                count--;                           // decrease the index
             }
             #ifdef TESTING
             printf("newline is: %s\n", newLine); // FOR TESTING making sure get right line
@@ -625,6 +630,7 @@ int findEmptyEntryFAT()
     { // go through FAT, if filename column is "." then that entry is empty
         if (strcmp(FAT[i][0], ".") == 0)
         {             // check if the current row's filename is ".", indicating an empty entry
+            startingIndex++;
             return i; // return index of empty row in FAT
         }
     }
@@ -643,11 +649,30 @@ int findEmptyBlock()
     { // go through FAT, if filename column is "." then that entry is empty
         if (strcmp(physicalDir[i], ".") == 0)
         {             // check if the current row's filename is ".", indicating an empty entry
+            startingIndex++;
             return i; // return index of empty row in FAT
         }
     }
     printf("Never found an empty entry in the FAT..\n"); // never found an index of an empty entry
     return -1;                                           // return -1 to indicate failure
+}
+
+/*
+    Prints the number of available blocks left to populate
+*/
+int printNumberOfAvailableBlocks()
+{
+    int i = 0;
+    int j = 0;
+    int emptyBlocks = 0;
+    for (i = 0; i < 100; i++)
+    { // go through FAT, if filename column is "." then that entry is empty
+        if (strcmp(FAT[i][0], ".") == 0)
+        {             // check if the current row's filename is ".", indicating an empty entry
+            emptyBlocks++;
+        }
+    }
+    return emptyBlocks;
 }
 
 int findParent(char *parent)
@@ -726,7 +751,6 @@ void insertEntry(int emptyIndex, char *name, char *fileOrDir, char *indexNumber,
         fprintf(disk_ptr, "%s|", FAT[emptyIndex][2]);
         fprintf(disk_ptr, "%s|", FAT[emptyIndex][3]);
         fprintf(disk_ptr, "%s", FAT[emptyIndex][4]);
-        startingIndex++; // increment startingIndex
     }
     else
     {

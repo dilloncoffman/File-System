@@ -31,6 +31,7 @@
     char* getTime(); // gets the date and time to be used
     int findEmptyEntryFAT(); // used to get an empty index within the FAT in order to insert a new file or directory
     int findEmptyBlock(); // used to get an empty index to store the contents of a file
+    int printNumberOfAvailableBlocks();
     int findParent(char* parent);
     void insertEntry(int emptyIndex, char* filename, char* fileOrDir, char* indexNumber, char* parent, char* timestamp); // inserts an entry into the FAT with thr proper fields, at the correct index
     
