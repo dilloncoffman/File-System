@@ -1,0 +1,8 @@
+File Name | FileOrDir | Index Number | Parent | Date and Time
+/|dir|0|none|Sun Dec  9 15:24:25 2018
+newone.txt|file|0|/|Sun Dec  9 15:24:29 2018
+new.txt|file|2|/|Sun Dec  9 15:31:07 2018
+boo.pdf|file|2|/|Sun Dec  9 15:31:22 2018
+new.|file|2|/|Sun Dec  9 15:31:26 2018
+dir|dir|5|/|Sun Dec  9 15:32:24 2018
+new.txt|file|5|dir|Sun Dec  9 15:32:31 2018

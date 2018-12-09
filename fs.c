@@ -203,7 +203,7 @@ int main(int argc, char **argv)
                 }
                 else
                 {                                                      // something went wrong
-                    printf("An error occured creating your file..\n"); // print error message
+                    printf("An error occured creating your file.. try again!\n"); // print error message
                 }
             }
             else if (strcmp(line, "createDir") == 0)
@@ -251,7 +251,9 @@ int main(int argc, char **argv)
             else if (strcmp(line, "printHierarchy") == 0)
             { // user wants to print current structure of files
                 // parse command to get filename wanting to be created
+                #ifdef TESTING
                 printf("User wants to print the current directory hierarchy..\n"); // FOR TESTING
+                #endif
                 printDirHierarchy(); // print the current directory hierarchy
             }
             else if (strcmp(line, "printDir") == 0)
@@ -285,57 +287,50 @@ int main(int argc, char **argv)
 
 /*
     Creates a file with the name provided, allows the user to add content to that file, and adds an entry to the FAT
-    Accepts a file name to search for within the FAT
+    Accepts a file name to search for within the FAT and a parent name to assign to the specific file in its FAT entry
 */
 void createFile(char *filename, char *parent)
 {
-    // check that parent directory exists to store file under
-    // if (strcmp("/", filename)) {
-    //         // find empty entry in the FAT to create the new file at
-    //     int emptyIndex = findEmptyEntryFAT();
-    //     printf("Found an empty entry at row: %d\n", emptyIndex); // FOR TESTING
-    //     // find empty index in physical directory to store file contents in
-    //     int emptyBlock = findEmptyBlock();
-    //     printf("Found an empty block at index = %d\n", emptyBlock);
-    //     // convert emptyBlock to a string and assign that to the appropriate column in the FAT entry when inserting entry
-    //     char indexNumber[sizeof(int) * 4+1]; // make sure there's proper space for converting integer to string to be placed in FAT
-    //     sprintf(indexNumber, "%d", emptyBlock);
-    //     printf("Index number as a string: %s\n", indexNumber);
-    //     // insert entry into FAT -
-    //     insertEntry(emptyIndex, filename, "file", indexNumber, parent, getTime());
-    //     // } else { // otherwise root directory does not exist - print error message
-    //     //     printf("Was not able to create a directory as the root directory does not seem to exist..\n");
-    //     // }
-    // }
-    if (findParent(parent))
-    {
-        // find empty entry in the FAT to create the new file at
-        int emptyIndex = findEmptyEntryFAT();
-        #ifdef TESTING
-        printf("Found an empty entry at row: %d\n", emptyIndex); // FOR TESTING
-        #endif
-        // find empty index in physical directory to store file contents in
-        int emptyBlock = findEmptyBlock();
-        #ifdef TESTING
-        printf("Found an empty block at index = %d\n", emptyBlock);
-        #endif
-        // convert emptyBlock to a string and assign that to the appropriate column in the FAT entry when inserting entry
-        char indexNumber[sizeof(int) * 4 + 1]; // make sure there's proper space for converting integer to string to be placed in FAT
-        sprintf(indexNumber, "%d", emptyBlock);
-        #ifdef TESTING
-        printf("Index number as a string: %s\n", indexNumber);
-        #endif
-        // insert entry into FAT -
-        insertEntry(emptyIndex, filename, "file", indexNumber, parent, getTime());
-        // } else { // otherwise root directory does not exist - print error message
-        //     printf("Was not able to create a directory as the root directory does not seem to exist..\n");
-        // }
-
-        // prompt user to enter file contents to store at empty physical dir index
+    if ((!filename) || (!parent)) { // be sure filename and parent args are 
+        printf("Error: Either no filename name was specified or no parent directory was specified..try again!\n\n");
+        return;
     }
-    else
-    {
-        printf("Parent for file you wish to create was not found! Try again!\n\n");
+
+    // be sure that filename has an ending extension like ".txt"
+    if((strstr(filename, ".txt")) || strstr(filename, ".")) { // as long as the filename has a text extension or some extension 
+        if (findParent(parent))
+        {
+            // find empty entry in the FAT to create the new file at
+            int emptyIndex = findEmptyEntryFAT();
+            #ifdef TESTING
+            printf("Found an empty entry at row: %d\n", emptyIndex); // FOR TESTING
+            #endif
+            // find empty index in physical directory to store file contents in
+            int emptyBlock = findEmptyBlock();
+            #ifdef TESTING
+            printf("Found an empty block at index = %d\n", emptyBlock);
+            #endif
+            // convert emptyBlock to a string and assign that to the appropriate column in the FAT entry when inserting entry
+            char indexNumber[sizeof(int) * 4 + 1]; // make sure there's proper space for converting integer to string to be placed in FAT
+            sprintf(indexNumber, "%d", emptyBlock);
+            #ifdef TESTING
+            printf("Index number as a string: %s\n", indexNumber);
+            #endif
+            // insert entry into FAT -
+            insertEntry(emptyIndex, filename, "file", indexNumber, parent, getTime());
+            // } else { // otherwise root directory does not exist - print error message
+            //     printf("Was not able to create a directory as the root directory does not seem to exist..\n");
+            // }
+
+            // prompt user to enter file contents to store at empty physical dir index
+        }
+        else
+        {
+            printf("Parent for file you wish to create was not found! Try again!\n\n");
+        }
+    } else {
+        printf("Please specify an extension for the file to be created..\n\n");
+        return;
     }
 }
 
@@ -345,6 +340,7 @@ void createFile(char *filename, char *parent)
 */
 void deleteFile(char *filename)
 {
+    printf("Deleting %s from file system..\n\n", filename);
     int i = 0;
     int j = 0;
     startingIndex = 0;
@@ -456,6 +452,7 @@ void createDirectory(char *dirname, char *parent)
 */
 void deleteDirectory(char *dirname)
 {
+    printf("Deleting %s directory from file system..\n\n", dirname);
     int i = 0;
     int j = 0;
     startingIndex = 0;
@@ -531,17 +528,37 @@ void writeToFile(char *filename)
 */
 void printDirContent(char* dirname)
 {
-    // loop through FAT
-        // find every entry that has parent field equal to dirname and print them out to screen
+    if (!dirname) {
+        printf("No directory name specified..try again!\n\n");
+        return;
+    }
+
+    printf("Below are the contents of directory %s:\n", dirname);
     int i = 0;
     for (i = 0; i < 100; i++)
-    { // loop through the FAT, print out each row to show
-        for (x = 0; x < 5; x++)
-        {
-            printf("%s ", FAT[i][x]);
+    { // loop through the FAT
+        char *temp = (char *)malloc(sizeof(char) * strlen(FAT[i][3]));
+        temp = strdup(FAT[i][3]); // makes handling the string name easier to manipulate
+        char *tempType = (char *)malloc(sizeof(char) * strlen(FAT[i][1]));
+        tempType = strdup(FAT[i][1]); // makes handling the string name easier to manipulate
+
+        if(strcmp(temp, dirname) == 0) { // find every entry that has parent field equal to dirname and print them out to screen
+            for (x = 0; x < 5; x++) // for each column
+            {   
+                if (x == 4) {
+                    printf("%s", FAT[i][x]); // if column is date and time, don't print a pipe after it for readability
+                } else {
+                    printf("%s | ", FAT[i][x]); // otherwise print a pipe after for readability
+                }
+            }
+            int j = 0;
+            while(j != 1) {
+                printf("\n");
+                j++;
+            }
         }
-        printf("\n"); // FOR TESTING
     }
+    printf("\n");
 }
 
 /*
@@ -549,12 +566,18 @@ void printDirContent(char* dirname)
 */
 void printDirHierarchy()
 {
+    printf("Printing directory hierarchy below:\n");
+    printf("File Name | FileOrDir | Index Number | Parent | Date and Time\n");
     int i = 0;
     for (i = 0; i < 100; i++)
     { // loop through the FAT, print out each row to show
         for (x = 0; x < 5; x++)
         {
-            printf("%s ", FAT[i][x]);
+            if (x == 4) {
+                printf("%s", FAT[i][x]); // if column is date and time, don't print a pipe after it for readability
+            } else {
+                printf("%s | ", FAT[i][x]); // otherwise print a pipe after for readability
+            }
         }
         printf("\n"); // FOR TESTING
     }

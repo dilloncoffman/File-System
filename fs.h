@@ -25,7 +25,7 @@
     void readFile(char* filename); // finds the file in the FAT, and thus in the physical directory and prints its contents to screen for the user
     void writeToFile(char* filename); // copies a file from your host OS to your file system
     void printDirHierarchy(); // prints the current directory hierarchy
-    void printDirContent(); // prints the current directories contents
+    void printDirContent(char* dirname); // prints the current directories contents
     char** parseCommand(char* command, char** argv, int *argc);
 
     char* getTime(); // gets the date and time to be used
